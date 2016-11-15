@@ -20,6 +20,11 @@ class NativeSocket implements Socket
     const SOCKET_TIMEOUT = 1;
 
     /**
+     * The timeout for detecting a dead socket connection.
+     */
+    const SOCKET_DEAD_TIMEOUT = 5;
+
+    /**
      * Number of retries for attempted writes which return zero length.
      */
     const WRITE_RETRIES = 8;
@@ -100,6 +105,8 @@ class NativeSocket implements Socket
      */
     public function getLine($length = null)
     {
+        $timer = microtime(true);
+
         do {
             $data = isset($length) ?
                 $this->_wrapper()->fgets($this->_socket, $length) :
@@ -107,6 +114,10 @@ class NativeSocket implements Socket
 
             if ($this->_wrapper()->feof($this->_socket)) {
                 throw new Exception\SocketException('Socket closed by server!');
+            }
+
+            if (microtime(true) - $timer > self::SOCKET_TIMEOUT + self::SOCKET_DEAD_TIMEOUT) {
+                throw new Exception\SocketException('Socket connection died!');
             }
         } while ($data === false);
 
